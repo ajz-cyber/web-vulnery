@@ -263,6 +263,22 @@ def internal_error(error):
         "message": "Error interno del servidor"
     }), 500
 
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({
+        "message": "Bienvenido a la API de escaneo con Nmap",
+        "endpoints_disponibles": [
+            "/api/health",
+            "/api/escanear",
+            "/api/estado",
+            "/api/reportes",
+            "/api/reportes/<nombre>/contenido",
+            "/api/reportes/<nombre>/descargar",
+            "/api/reportes/<nombre> (DELETE)"
+        ]
+    })
+
+
 def main():
     """Función principal para iniciar el servidor backend"""
     crear_estructura_directorios()
