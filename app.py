@@ -281,7 +281,9 @@ def main():
     print("[+] Presiona Ctrl+C para detener el servidor")
     
     try:
-        app.run(host='0.0.0.0', port=5001, debug=True)
+        port = int(os.environ.get("PORT", 5000))  # Render asigna el puerto por variable de entorno
+        app.run(host='0.0.0.0', port=port, debug=False)
+
     except KeyboardInterrupt:
         print("\n[!] Servidor detenido")
 
