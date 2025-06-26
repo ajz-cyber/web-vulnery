@@ -1,211 +1,4 @@
-import os
-import nmap
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_from_directory
-import threading
-import glob
-
-app = Flask(__name__)
-
-# Configuración
-CARPETA_REPORTES = "reportes"
-CARPETA_TEMPLATES = "templates"
-
-# Estado global del escaneo
-estado_escaneo = {
-    "en_progreso": False,
-    "ultimo_reporte": None,
-    "mensaje": ""
-}
-
-def crear_estructura_directorios():
-    """Crea las carpetas necesarias"""
-    os.makedirs(CARPETA_REPORTES, exist_ok=True)
-    os.makedirs(CARPETA_TEMPLATES, exist_ok=True)
-
-def ejecutar_escaneo(host, puerto="5000", scripts="http-headers,http-title"):
-    """Ejecuta el escaneo en un hilo separado"""
-    global estado_escaneo
-    
-    try:
-        estado_escaneo["en_progreso"] = True
-        estado_escaneo["mensaje"] = f"Iniciando escaneo a {host}:{puerto}..."
-        
-        print(f"[+] Iniciando escaneo al host {host}...")
-        
-        # Inicializar el escáner Nmap
-        escaner = nmap.PortScanner()
-        
-        # Configurar argumentos del escaneo
-        argumentos = f"-sV -p {puerto} --script {scripts} -T4"
-        
-        estado_escaneo["mensaje"] = "Ejecutando escaneo..."
-        escaner.scan(hosts=host, arguments=argumentos)
-        
-        # Generar nombre del reporte
-        nombre_reporte = f"escaneo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        ruta_reporte = os.path.join(CARPETA_REPORTES, nombre_reporte)
-        
-        estado_escaneo["mensaje"] = "Generando reporte..."
-        
-        # Generar reporte
-        with open(ruta_reporte, "w", encoding="utf-8") as archivo:
-            archivo.write(f"=== REPORTE DE ESCANEO ===\n")
-            archivo.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            archivo.write(f"Host objetivo: {host}\n")
-            archivo.write(f"Puerto(s): {puerto}\n")
-            archivo.write(f"Scripts: {scripts}\n")
-            archivo.write("=" * 50 + "\n\n")
-            
-            for host_escaneado in escaner.all_hosts():
-                archivo.write(f"Host: {host_escaneado} ({escaner[host_escaneado].state()})\n")
-                archivo.write("-" * 40 + "\n")
-                
-                for protocolo in escaner[host_escaneado].all_protocols():
-                    archivo.write(f"Protocolo: {protocolo}\n")
-                    puertos = escaner[host_escaneado][protocolo].keys()
-                    
-                    for puerto_encontrado in sorted(puertos):
-                        info = escaner[host_escaneado][protocolo][puerto_encontrado]
-                        archivo.write(f"  Puerto {puerto_encontrado}: {info['state']}")
-                        
-                        if info.get('name'):
-                            archivo.write(f" - Servicio: {info['name']}")
-                        if info.get('version'):
-                            archivo.write(f" - Versión: {info['version']}")
-                        
-                        archivo.write("\n")
-                        
-                        # Mostrar resultados de scripts NSE
-                        if 'script' in info:
-                            archivo.write("    Scripts NSE:\n")
-                            for nombre_script, salida_script in info['script'].items():
-                                archivo.write(f"      [{nombre_script}]:\n")
-                                # Formatear la salida del script
-                                lineas_script = salida_script.strip().split('\n')
-                                for linea in lineas_script:
-                                    archivo.write(f"        {linea}\n")
-                            archivo.write("\n")
-                
-                archivo.write("\n")
-        
-        estado_escaneo["ultimo_reporte"] = nombre_reporte
-        estado_escaneo["mensaje"] = f"Escaneo completado. Reporte: {nombre_reporte}"
-        print(f"[✓] Escaneo completado. Reporte guardado en: {ruta_reporte}")
-        
-    except Exception as e:
-        estado_escaneo["mensaje"] = f"Error durante el escaneo: {str(e)}"
-        print(f"[!] Error: {e}")
-    
-    finally:
-        estado_escaneo["en_progreso"] = False
-
-@app.route('/')
-def index():
-    """Página principal"""
-    return render_template('index.html')
-
-@app.route('/escanear', methods=['POST'])
-def iniciar_escaneo():
-    """Inicia un nuevo escaneo"""
-    if estado_escaneo["en_progreso"]:
-        return jsonify({
-            "success": False,
-            "message": "Ya hay un escaneo en progreso"
-        })
-    
-    datos = request.get_json()
-    host = datos.get('host', '127.0.0.1')
-    puerto = datos.get('puerto', '5000')
-    scripts = datos.get('scripts', 'http-headers,http-title')
-    
-    # Validar entrada
-    if not host:
-        return jsonify({
-            "success": False,
-            "message": "Debe especificar un host"
-        })
-    
-    # Iniciar escaneo en hilo separado
-    hilo_escaneo = threading.Thread(
-        target=ejecutar_escaneo,
-        args=(host, puerto, scripts)
-    )
-    hilo_escaneo.daemon = True
-    hilo_escaneo.start()
-    
-    return jsonify({
-        "success": True,
-        "message": "Escaneo iniciado"
-    })
-
-@app.route('/estado')
-def obtener_estado():
-    """Obtiene el estado actual del escaneo"""
-    return jsonify(estado_escaneo)
-
-@app.route('/reportes')
-def listar_reportes():
-    """Lista todos los reportes disponibles"""
-    try:
-        archivos = glob.glob(os.path.join(CARPETA_REPORTES, "*.txt"))
-        reportes = []
-        
-        for archivo in sorted(archivos, reverse=True):
-            nombre = os.path.basename(archivo)
-            fecha_modificacion = datetime.fromtimestamp(
-                os.path.getmtime(archivo)
-            ).strftime('%Y-%m-%d %H:%M:%S')
-            
-            reportes.append({
-                "nombre": nombre,
-                "fecha": fecha_modificacion,
-                "tamaño": os.path.getsize(archivo)
-            })
-        
-        return jsonify({
-            "success": True,
-            "reportes": reportes
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": f"Error al listar reportes: {str(e)}"
-        })
-
-@app.route('/reportes/<nombre_archivo>')
-def descargar_reporte(nombre_archivo):
-    """Descarga un reporte específico"""
-    try:
-        return send_from_directory(CARPETA_REPORTES, nombre_archivo, as_attachment=True)
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": f"Error al descargar reporte: {str(e)}"
-        })
-
-@app.route('/reporte/<nombre_archivo>')
-def ver_reporte(nombre_archivo):
-    """Muestra el contenido de un reporte"""
-    try:
-        ruta_archivo = os.path.join(CARPETA_REPORTES, nombre_archivo)
-        with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
-            contenido = archivo.read()
-        
-        return jsonify({
-            "success": True,
-            "contenido": contenido,
-            "nombre": nombre_archivo
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": f"Error al leer reporte: {str(e)}"
-        })
-
-def crear_template_html():
-    """Crea el archivo HTML de la interfaz"""
-    html_content = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -249,6 +42,19 @@ def crear_template_html():
         .header p {
             font-size: 1.1em;
             opacity: 0.9;
+        }
+        
+        .api-status {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 30px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .api-status.offline {
+            border-left-color: #dc3545;
+            background: #fff5f5;
         }
         
         .content {
@@ -314,6 +120,10 @@ def crear_template_html():
             background: #95a5a6;
             cursor: not-allowed;
             transform: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         }
         
         .status {
@@ -395,6 +205,8 @@ def crear_template_html():
             text-decoration: none;
             color: white;
             transition: opacity 0.2s;
+            border: none;
+            cursor: pointer;
         }
         
         .btn-view {
@@ -403,6 +215,10 @@ def crear_template_html():
         
         .btn-download {
             background: #28a745;
+        }
+        
+        .btn-delete {
+            background: #dc3545;
         }
         
         .btn-small:hover {
@@ -439,6 +255,42 @@ def crear_template_html():
             font-size: 14px;
             line-height: 1.5;
             color: #2c3e50;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: black;
         }
         
         @media (max-width: 768px) {
@@ -472,6 +324,11 @@ def crear_template_html():
         <div class="header">
             <h1>🔍 Escáner de Puertos</h1>
             <p>Herramienta de escaneo de puertos con Nmap</p>
+        </div>
+        
+        <!-- Estado de la API -->
+        <div id="apiStatus" class="api-status">
+            <strong>🔗 Estado API:</strong> <span id="apiStatusText">Verificando...</span>
         </div>
         
         <div class="content">
@@ -533,10 +390,45 @@ def crear_template_html():
         </div>
     </div>
     
+    <!-- Modal para mostrar reportes -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal()">&times;</span>
+            <div id="modalContent">
+                <h3>Cargando...</h3>
+            </div>
+        </div>
+    </div>
+    
     <script>
+        // Configuración de la API
+        const API_BASE_URL = 'http://localhost:5001/api';
+        
         let intervaloBusqueda = null;
+        let apiOnline = false;
+        
+        // Verificar estado de la API
+        function verificarAPI() {
+            fetch(`${API_BASE_URL}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    apiOnline = true;
+                    document.getElementById('apiStatus').className = 'api-status';
+                    document.getElementById('apiStatusText').textContent = 'Conectado ✅';
+                })
+                .catch(error => {
+                    apiOnline = false;
+                    document.getElementById('apiStatus').className = 'api-status offline';
+                    document.getElementById('apiStatusText').textContent = 'Desconectado ❌ - Verificar que el backend esté ejecutándose';
+                });
+        }
         
         function iniciarEscaneo() {
+            if (!apiOnline) {
+                alert('API no disponible. Verificar que el backend esté ejecutándose.');
+                return;
+            }
+            
             const host = document.getElementById('host').value.trim();
             const puerto = document.getElementById('puerto').value.trim();
             const scripts = document.getElementById('scripts').value;
@@ -552,7 +444,7 @@ def crear_template_html():
                 scripts: scripts
             };
             
-            fetch('/escanear', {
+            fetch(`${API_BASE_URL}/escanear`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -582,7 +474,9 @@ def crear_template_html():
         }
         
         function verificarEstado() {
-            fetch('/estado')
+            if (!apiOnline) return;
+            
+            fetch(`${API_BASE_URL}/estado`)
             .then(response => response.json())
             .then(data => {
                 const btnEscanear = document.getElementById('btnEscanear');
@@ -626,7 +520,9 @@ def crear_template_html():
         }
         
         function mostrarReporte(nombreArchivo) {
-            fetch('/reporte/' + nombreArchivo)
+            if (!apiOnline) return;
+            
+            fetch(`${API_BASE_URL}/reportes/${nombreArchivo}/contenido`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -634,11 +530,16 @@ def crear_template_html():
                     reporteDiv.innerHTML = '<h3>📄 Último Reporte: ' + data.nombre + '</h3><pre>' + data.contenido + '</pre>';
                     reporteDiv.style.display = 'block';
                 }
+            })
+            .catch(error => {
+                console.error('Error al obtener reporte:', error);
             });
         }
         
         function actualizarReportes() {
-            fetch('/reportes')
+            if (!apiOnline) return;
+            
+            fetch(`${API_BASE_URL}/reportes`)
             .then(response => response.json())
             .then(data => {
                 const listaDiv = document.getElementById('listaReportes');
@@ -651,8 +552,9 @@ def crear_template_html():
                                 <small>📅 ${reporte.fecha} | 📊 ${(reporte.tamaño / 1024).toFixed(1)} KB</small>
                             </div>
                             <div class="report-actions">
-                                <a href="#" class="btn-small btn-view" onclick="verReporte('${reporte.nombre}')">👁️ Ver</a>
-                                <a href="/reportes/${reporte.nombre}" class="btn-small btn-download">💾 Descargar</a>
+                                <button class="btn-small btn-view" onclick="verReporteModal('${reporte.nombre}')">👁️ Ver</button>
+                                <button class="btn-small btn-download" onclick="descargarReporte('${reporte.nombre}')">💾 Descargar</button>
+                                <button class="btn-small btn-delete" onclick="eliminarReporte('${reporte.nombre}')">🗑️ Eliminar</button>
                             </div>
                         </div>
                     `).join('');
@@ -665,90 +567,85 @@ def crear_template_html():
                         </div>
                     `;
                 }
+            })
+            .catch(error => {
+                console.error('Error al obtener reportes:', error);
+                const listaDiv = document.getElementById('listaReportes');
+                listaDiv.innerHTML = `
+                    <div class="report-item">
+                        <div class="report-info">
+                            <p style="color: #dc3545;">Error al cargar reportes</p>
+                        </div>
+                    </div>
+                `;
             });
         }
         
-        function verReporte(nombreArchivo) {
-            fetch('/reporte/' + nombreArchivo)
+        function verReporteModal(nombreArchivo) {
+            if (!apiOnline) return;
+            
+            fetch(`${API_BASE_URL}/reportes/${nombreArchivo}/contenido`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const reporteDiv = document.getElementById('reporteActual');
-                    reporteDiv.innerHTML = '<h3>📄 Reporte: ' + data.nombre + '</h3><pre>' + data.contenido + '</pre>';
-                    reporteDiv.style.display = 'block';
-                    reporteDiv.scrollIntoView({ behavior: 'smooth' });
+                    document.getElementById('modalContent').innerHTML = 
+                        '<h3>📄 ' + data.nombre + '</h3><pre>' + data.contenido + '</pre>';
+                    document.getElementById('reportModal').style.display = 'block';
                 }
+            })
+            .catch(error => {
+                console.error('Error al obtener reporte:', error);
             });
         }
         
-        // Cargar reportes al iniciar la página
-        document.addEventListener('DOMContentLoaded', actualizarReportes);
+        function descargarReporte(nombreArchivo) {
+            if (!apiOnline) return;
+            
+            window.open(`${API_BASE_URL}/reportes/${nombreArchivo}/descargar`, '_blank');
+        }
+        
+        function eliminarReporte(nombreArchivo) {
+            if (!apiOnline) return;
+            
+            if (confirm(`¿Estás seguro de que quieres eliminar el reporte "${nombreArchivo}"?`)) {
+                fetch(`${API_BASE_URL}/reportes/${nombreArchivo}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        actualizarReportes();
+                        mostrarEstado('completed', data.message);
+                    } else {
+                        mostrarEstado('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    mostrarEstado('error', 'Error al eliminar reporte: ' + error.message);
+                });
+            }
+        }
+        
+        function cerrarModal() {
+            document.getElementById('reportModal').style.display = 'none';
+        }
+        
+        // Cerrar modal al hacer clic fuera de él
+        window.onclick = function(event) {
+            const modal = document.getElementById('reportModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Inicialización al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            verificarAPI();
+            actualizarReportes();
+            
+            // Verificar API cada 30 segundos
+            setInterval(verificarAPI, 30000);
+        });
     </script>
 </body>
-</html>'''
-    
-    ruta_template = os.path.join(CARPETA_TEMPLATES, 'index.html')
-    with open(ruta_template, 'w', encoding='utf-8') as archivo:
-        archivo.write(html_content)
-    
-    print(f"[✓] Template HTML creado en: {ruta_template}")
-
-def main():
-    """Función principal que puede ejecutar el escáner original o la interfaz web"""
-    print("=== ESCÁNER DE PUERTOS ===")
-    print("1. Ejecutar escáner web (interfaz gráfica)")
-    print("2. Ejecutar escáner original (línea de comandos)")
-    
-    opcion = input("\nSelecciona una opción (1 o 2): ").strip()
-    
-    if opcion == "1":
-        # Crear estructura de directorios y template
-        crear_estructura_directorios()
-        crear_template_html()
-        
-        print("\n[+] Iniciando servidor web...")
-        print("[+] Accede a: http://localhost:5001")
-        print("[+] Presiona Ctrl+C para detener el servidor")
-        
-        try:
-            app.run(host='0.0.0.0', port=5001, debug=False)
-        except KeyboardInterrupt:
-            print("\n[!] Servidor detenido")
-    
-    elif opcion == "2":
-        # Ejecutar escáner original
-        print(f"[+] Iniciando escaneo al host 127.0.0.1...")
-        
-        os.makedirs(CARPETA_REPORTES, exist_ok=True)
-        escaner = nmap.PortScanner()
-        
-        escaner.scan(
-            hosts="127.0.0.1",
-            arguments="-sV -p 5000 --script http-headers,http-title -T4"
-        )
-        
-        nombre_reporte = f"escaneo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        ruta_reporte = os.path.join(CARPETA_REPORTES, nombre_reporte)
-        
-        with open(ruta_reporte, "w", encoding="utf-8") as archivo:
-            for host in escaner.all_hosts():
-                archivo.write(f"\nHost: {host} ({escaner[host].state()})\n")
-                for protocolo in escaner[host].all_protocols():
-                    archivo.write(f" Protocolo: {protocolo}\n")
-                    puertos = escaner[host][protocolo].keys()
-                    for puerto in sorted(puertos):
-                        info = escaner[host][protocolo][puerto]
-                        linea = f"  Puerto {puerto}: {info['state']} - {info.get('name', '')} {info.get('version', '')}\n"
-                        archivo.write(linea)
-                        
-                        if 'script' in info:
-                            for nombre_script, salida_script in info['script'].items():
-                                archivo.write(f"    [{nombre_script}]: {salida_script.strip()}\n")
-        
-        print(f"[✓] Escaneo completado. Reporte guardado en: {ruta_reporte}")
-    
-    else:
-        print("[!] Opción no válida")
-
-if __name__ == "__main__":
-    main()
+</html>
