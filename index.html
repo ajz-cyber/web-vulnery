@@ -3,59 +3,764 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Puertos</title>
+    <title>Escáner de Puertos - Nmap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .api-status {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .api-status strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .scan-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 2px solid #e9ecef;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            animation: fadeIn 0.5s;
+        }
+
+        .status.info {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.scanning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.completed {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #b6d4fe;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .report-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 2px solid #e9ecef;
+        }
+
+        .report-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .current-report {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 20px;
+        }
+
+        .current-report h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .current-report pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .reports-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .report-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .report-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .report-info {
+            margin-bottom: 15px;
+        }
+
+        .report-info strong {
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+
+        .report-info small {
+            color: #6c757d;
+            line-height: 1.4;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-view {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #138496;
+        }
+
+        .btn-download {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #218838;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
+        .btn-refresh {
+            background: #6f42c1;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .btn-refresh:hover {
+            background: #5a32a3;
+        }
+
+        .btn-clear-all {
+            background: #fd7e14;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .btn-clear-all:hover {
+            background: #e8650d;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 1000px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 20px;
+            position: relative;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #f39c12;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .modal-body pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state h4 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .scanning-indicator {
+            animation: pulse 2s infinite;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .report-actions {
+                justify-content: center;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div>
-        <h1>Escáner de Puertos</h1>
-        
-        <div id="apiStatus">
-            <strong>Estado API:</strong> <span id="apiStatusText">Verificando...</span>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Escáner de Puertos</h1>
+            <p>Herramienta de análisis de red con Nmap</p>
+            
+            <div class="api-status">
+                <strong>🌐 Estado de la API:</strong>
+                <span id="apiStatusText">Verificando...</span>
+            </div>
         </div>
         
-        <div>
-            <div>
-                <label for="host">Host:</label>
-                <input type="text" id="host" value="127.0.0.1">
+        <div class="main-content">
+            <div class="scan-form">
+                <h3>📋 Configuración del Escaneo</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="host">🎯 Host o IP:</label>
+                        <input type="text" id="host" value="127.0.0.1" placeholder="Ejemplo: 192.168.1.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="puerto">🚪 Puerto(s):</label>
+                        <input type="text" id="puerto" value="80,443,8080" placeholder="Ejemplo: 80,443,8080">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="scripts">⚙️ Scripts NSE:</label>
+                    <select id="scripts">
+                        <option value="http-headers,http-title">HTTP básico (headers, title)</option>
+                        <option value="default">Scripts por defecto</option>
+                        <option value="vuln">Detección de vulnerabilidades</option>
+                        <option value="http-enum,http-methods">Enumeración HTTP</option>
+                        <option value="ssl-enum-ciphers,ssl-cert">Análisis SSL/TLS</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="iniciarEscaneo()" id="btnEscanear">
+                    🚀 Iniciar Escaneo
+                </button>
             </div>
             
-            <div>
-                <label for="puerto">Puerto(s):</label>
-                <input type="text" id="puerto" value="5000">
-            </div>
-        </div>
-        
-        <div>
-            <label for="scripts">Scripts:</label>
-            <select id="scripts">
-                <option value="http-headers,http-title">HTTP básico</option>
-                <option value="default">Por defecto</option>
-                <option value="vuln">Vulnerabilidades</option>
-            </select>
-        </div>
-        
-        <button onclick="iniciarEscaneo()" id="btnEscanear">Iniciar Escaneo</button>
-        
-        <div id="estado" style="display: none;"></div>
-        
-        <div id="reporteActual" style="display: none;"></div>
-        
-        <div>
-            <h3>Reportes</h3>
-            <button onclick="actualizarReportes()">Actualizar</button>
-            <div id="listaReportes">
-                <div>Cargando reportes...</div>
+            <div id="estado" class="status" style="display: none;"></div>
+            
+            <div id="reporteActual" class="current-report" style="display: none;"></div>
+            
+            <div class="report-section">
+                <h3>📊 Historial de Reportes</h3>
+                <button class="btn btn-refresh" onclick="refrescarReportes()">
+                    🔄 Actualizar Lista
+                </button>
+                
+                <div class="reports-list" id="listaReportes">
+                    <div class="empty-state">
+                        <h4>Cargando reportes...</h4>
+                        <p>Por favor espera mientras se cargan los reportes disponibles.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-    <div id="reportModal" style="display: none;">
-        <div>
-            <span onclick="cerrarModal()">×</span>
-            <div id="modalContent">Cargando...</div>
+    <!-- Modal para ver reportes -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Detalle del Reporte</h3>
+                <span class="close" onclick="cerrarModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <p>Cargando contenido del reporte...</p>
+            </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        const API_BASE_URL = 'https://web-vulnery.onrender.com/api';
+        let intervaloBusqueda = null;
+        let apiOnline = false;
+
+        function verificarAPI() {
+            fetch(`${API_BASE_URL}/health`)
+                .then(res => res.json())
+                .then(data => {
+                    apiOnline = true;
+                    document.getElementById('apiStatusText').textContent = 'Conectado ✅';
+                    if (data.reportes_en_memoria !== undefined) {
+                        document.getElementById('apiStatusText').textContent = 
+                            `Conectado ✅ (${data.reportes_en_memoria} reportes en memoria)`;
+                    }
+                })
+                .catch(() => {
+                    apiOnline = false;
+                    document.getElementById('apiStatusText').textContent = 'Desconectado ❌';
+                });
+        }
+
+        function iniciarEscaneo() {
+            if (!apiOnline) {
+                alert('⚠️ API no disponible. Verifica la conexión.');
+                return;
+            }
+
+            const host = document.getElementById('host').value.trim();
+            const puerto = document.getElementById('puerto').value.trim();
+            const scripts = document.getElementById('scripts').value;
+
+            if (!host) {
+                alert('⚠️ Por favor ingresa un host válido.');
+                return;
+            }
+
+            fetch(`${API_BASE_URL}/escanear`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ host, puerto, scripts })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        iniciarMonitoreo();
+                        mostrarEstado('info', '🚀 Escaneo iniciado correctamente');
+                    } else {
+                        mostrarEstado('error', '❌ ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    mostrarEstado('error', '❌ Error al iniciar escaneo: ' + err.message);
+                });
+        }
+
+        function iniciarMonitoreo() {
+            if (intervaloBusqueda) {
+                clearInterval(intervaloBusqueda);
+            }
+            intervaloBusqueda = setInterval(verificarEstado, 1000);
+            verificarEstado();
+        }
+
+        function verificarEstado() {
+            if (!apiOnline) return;
+
+            fetch(`${API_BASE_URL}/estado`)
+                .then(res => res.json())
+                .then(data => {
+                    const btn = document.getElementById('btnEscanear');
+
+                    if (data.en_progreso) {
+                        mostrarEstado('scanning', '🔄 ' + data.mensaje);
+                        btn.disabled = true;
+                        btn.textContent = '🔄 Escaneando...';
+                        btn.classList.add('scanning-indicator');
+                    } else {
+                        clearInterval(intervaloBusqueda);
+                        intervaloBusqueda = null;
+                        btn.disabled = false;
+                        btn.textContent = '🚀 Iniciar Escaneo';
+                        btn.classList.remove('scanning-indicator');
+
+                        if (data.ultimo_reporte) {
+                            mostrarEstado('completed', '✅ ' + data.mensaje);
+                            mostrarReporte(data.ultimo_reporte);
+                            actualizarReportes();
+                        } else if (data.mensaje) {
+                            mostrarEstado('error', '❌ ' + data.mensaje);
+                        }
+                    }
+                })
+                .catch(err => {
+                    mostrarEstado('error', '❌ Error al verificar estado: ' + err.message);
+                });
+        }
+
+        function mostrarEstado(tipo, mensaje) {
+            const div = document.getElementById('estado');
+            div.className = 'status ' + tipo;
+            div.textContent = mensaje;
+            div.style.display = 'block';
+            
+            if (tipo === 'info' || tipo === 'completed') {
+                setTimeout(() => {
+                    if (div.textContent === mensaje) {
+                        div.style.display = 'none';
+                    }
+                }, 5000);
+            }
+        }
+
+        function mostrarReporte(reporteId) {
+            fetch(`${API_BASE_URL}/reportes/${reporteId}/contenido`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const div = document.getElementById('reporteActual');
+                        div.innerHTML = `
+                            <h4>📄 Último Reporte: ${data.nombre}</h4>
+                            <p><strong>📅 Fecha:</strong> ${data.fecha}</p>
+                            <p><strong>🎯 Host:</strong> ${data.host} | <strong>🚪 Puerto:</strong> ${data.puerto}</p>
+                            <p><strong>⚙️ Scripts:</strong> ${data.scripts}</p>
+                            <pre>${data.contenido}</pre>
+                        `;
+                        div.style.display = 'block';
+                    } else {
+                        mostrarEstado('error', '❌ Error al cargar el reporte: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    mostrarEstado('error', '❌ Error al obtener reporte: ' + err.message);
+                });
+        }
+
+        function actualizarReportes() {
+            fetch(`${API_BASE_URL}/reportes`)
+                .then(res => res.json())
+                .then(data => {
+                    const lista = document.getElementById('listaReportes');
+                    if (data.success && data.reportes.length > 0) {
+                        lista.innerHTML = data.reportes.map(r => `
+                            <div class="report-item">
+                                <div class="report-info">
+                                    <strong>📄 ${r.nombre}</strong><br>
+                                    <small>
+                                        <strong>📅 Fecha:</strong> ${r.fecha}<br>
+                                        <strong>🎯 Host:</strong> ${r.host} | <strong>🚪 Puerto:</strong> ${r.puerto}<br>
+                                        <strong>📊 Tamaño:</strong> ${(r.tamaño / 1024).toFixed(1)} KB
+                                    </small>
+                                </div>
+                                <div class="report-actions">
+                                    <button class="btn-small btn-view" onclick="verReporteModal('${r.id}')">👁️ Ver</button>
+                                    <button class="btn-small btn-download" onclick="descargarReporte('${r.id}')">💾 Descargar</button>
+                                    <button class="btn-small btn-delete" onclick="eliminarReporte('${r.id}', '${r.nombre}')">🗑️ Eliminar</button>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        if (data.reportes.length > 1) {
+                            lista.innerHTML += `
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <button class="btn btn-clear-all" onclick="limpiarTodosReportes()">
+                                        🧹 Eliminar todos los reportes (${data.reportes.length})
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        lista.innerHTML = `
+                            <div class="empty-state">
+                                <h4>📭 No hay reportes disponibles</h4>
+                                <p>Los reportes aparecerán aquí una vez que completes tu primer escaneo.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('listaReportes').innerHTML = `
+                        <div class="empty-state">
+                            <h4>❌ Error al cargar reportes</h4>
+                            <p>${err.message}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function verReporteModal(reporteId) {
+            fetch(`${API_BASE_URL}/reportes/${reporteId}/contenido`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('modalContent').innerHTML = `
+                            <h3>📄 ${data.nombre}</h3>
+                            <p><strong>📅 Fecha:</strong> ${data.fecha}</p>
+                            <p><strong>🎯 Host:</strong> ${data.host} | <strong>🚪 Puerto:</strong> ${data.puerto}</p>
+                            <p><strong>⚙️ Scripts:</strong> ${data.scripts}</p>
+                            <hr>
+                            <pre>${data.contenido}</pre>
+                        `;
+                        document.getElementById('reportModal').style.display = 'block';
+                    } else {
+                        mostrarEstado('error', '❌ Error al cargar el reporte: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    mostrarEstado('error', '❌ Error al obtener reporte: ' + err.message);
+                });
+        }
+
+        function descargarReporte(reporteId) {
+            window.open(`${API_BASE_URL}/reportes/${reporteId}/descargar`, '_blank');
+        }
+
+        function eliminarReporte(reporteId, nombreReporte) {
+            if (confirm(`🗑️ ¿Estás seguro de que quieres eliminar el reporte "${nombreReporte}"?`)) {
+                fetch(`${API_BASE_URL}/reportes/${reporteId}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            actualizarReportes();
+                            mostrarEstado('completed', '✅ ' + data.message);
+                            
+                            const reporteActual = document.getElementById('reporteActual');
+                            if (reporteActual.innerHTML.includes(nombreReporte)) {
+                                reporteActual.style.display = 'none';
+                            }
+                        } else {
+                            mostrarEstado('error', '❌ ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        mostrarEstado('error', '❌ Error al eliminar reporte: ' + err.message);
+                    });
+            }
+        }
+
+        function limpiarTodosReportes() {
+            if (confirm('🧹 ¿Estás seguro de que quieres eliminar TODOS los reportes? Esta acción no se puede deshacer.')) {
+                fetch(`${API_BASE_URL}/reportes/limpiar`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            actualizarReportes();
+                            mostrarEstado('completed', '✅ ' + data.message);
+                            document.getElementById('reporteActual').style.display = 'none';
+                        } else {
+                            mostrarEstado('error', '❌ ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        mostrarEstado('error', '❌ Error al limpiar reportes: ' + err.message);
+                    });
+            }
+        }
+
+        function refrescarReportes() {
+            mostrarEstado('info', '🔄 Actualizando lista de reportes...');
+            actualizarReportes();
+        }
+
+        function cerrarModal() {
+            document.getElementById('reportModal').style.display = 'none';
+        }
+
+        window.onclick = function (e) {
+            const modal = document.getElementById('reportModal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            verificarAPI();
+            actualizarReportes();
+            setInterval(verificarAPI, 30000);
+        });
+    </script>
 </body>
 </html>
