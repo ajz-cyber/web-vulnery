@@ -3,131 +3,651 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Puertos</title>
+    <title>Escáner de Puertos Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-panel {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .status-bar {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .form-section {
+            padding: 25px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group small {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .scan-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .scan-type-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9f9f9;
+        }
+
+        .scan-type-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .scan-type-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .scan-type-card h4 {
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .scan-type-card p {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .advanced-options {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .advanced-options h4 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .results-header {
+            background: linear-gradient(135deg, #343a40, #495057);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-content {
+            padding: 20px;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .report-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .report-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .report-item:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .report-item h5 {
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .report-item p {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .scan-types {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div>
-        <h1>Escáner de Puertos</h1>
-        
-        <div id="apiStatus">
-            <strong>Estado API:</strong> <span id="apiStatusText">Verificando...</span>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Escáner de Puertos Pro</h1>
+            <p>Herramienta profesional para análisis de red y seguridad</p>
         </div>
-        
-        <div>
-            <div>
-                <label for="host">Host:</label>
-                <input type="text" id="host" value="127.0.0.1">
+
+        <div class="main-panel">
+            <div class="status-bar">
+                <div class="status-indicator"></div>
+                <strong>Estado API:</strong> 
+                <span id="apiStatusText">Verificando conexión...</span>
+            </div>
+
+            <div class="form-section">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="host">🌐 Host / Dirección IP</label>
+                        <input type="text" id="host" value="127.0.0.1" placeholder="Ej: 192.168.1.1, google.com">
+                        <small>Ingresa una dirección IP o nombre de dominio</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="puerto">🚪 Puerto(s) a escanear</label>
+                        <input type="text" id="puerto" value="80,443,22,21,25,53,110,143,993,995" placeholder="Ej: 80, 80-90, 22,80,443">
+                        <small>Formato: puerto único, rango o lista separada por comas</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>⚙️ Tipo de Escaneo</label>
+                    <div class="scan-types">
+                        <div class="scan-type-card active" data-type="basico">
+                            <h4>🔍 Básico</h4>
+                            <p>TCP Connect scan - Rápido y confiable</p>
+                        </div>
+                        <div class="scan-type-card" data-type="stealth">
+                            <h4>🥷 Stealth</h4>
+                            <p>SYN scan - Difícil de detectar</p>
+                        </div>
+                        <div class="scan-type-card" data-type="udp">
+                            <h4>📡 UDP</h4>
+                            <p>Escaneo de puertos UDP</p>
+                        </div>
+                        <div class="scan-type-card" data-type="completo">
+                            <h4>🔄 Completo</h4>
+                            <p>TCP + UDP combinado</p>
+                        </div>
+                        <div class="scan-type-card" data-type="rapido">
+                            <h4>⚡ Rápido</h4>
+                            <p>Top 1000 puertos más comunes</p>
+                        </div>
+                        <div class="scan-type-card" data-type="intensivo">
+                            <h4>🔬 Intensivo</h4>
+                            <p>Detección de OS y servicios</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="scripts">📜 Scripts NSE</label>
+                    <select id="scripts">
+                        <option value="http-headers,http-title">HTTP básico</option>
+                        <option value="default">Scripts por defecto</option>
+                        <option value="vuln">Detección de vulnerabilidades</option>
+                        <option value="discovery">Descubrimiento de servicios</option>
+                        <option value="safe">Scripts seguros</option>
+                        <option value="intrusive">Scripts intrusivos</option>
+                        <option value="http-*">HTTP completo</option>
+                        <option value="ssl-*">SSL/TLS</option>
+                        <option value="smb-*">SMB</option>
+                        <option value="dns-*">DNS</option>
+                    </select>
+                </div>
+
+                <div class="advanced-options hidden" id="opcionesAvanzadas">
+                    <h4>🔧 Opciones Avanzadas</h4>
+                    
+                    <div class="form-group">
+                        <label for="velocidad">🚀 Velocidad de Escaneo</label>
+                        <select id="velocidad">
+                            <option value="T1">T1 - Muy lento (Evasión IDS)</option>
+                            <option value="T2">T2 - Lento</option>
+                            <option value="T3">T3 - Normal</option>
+                            <option value="T4" selected>T4 - Rápido</option>
+                            <option value="T5">T5 - Muy rápido</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="deteccionOS">
+                            <label for="deteccionOS">🖥️ Detección de Sistema Operativo</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="deteccionVersion" checked>
+                            <label for="deteccionVersion">🔍 Detección de Versión</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="fragmentacion">
+                            <label for="fragmentacion">🧩 Fragmentación de Paquetes</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="evasionFirewall">
+                            <label for="evasionFirewall">🛡️ Evasión de Firewall</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="argumentosPersonalizados">⚙️ Argumentos Personalizados</label>
+                        <input type="text" id="argumentosPersonalizados" placeholder="Ej: --source-port 53 --data-length 200">
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" onclick="mostrarOpcionesAvanzadas()">
+                        🔧 Opciones Avanzadas
+                    </button>
+                    <button class="btn btn-primary" onclick="iniciarEscaneo()" id="btnEscanear">
+                        🚀 Iniciar Escaneo
+                    </button>
+                    <button class="btn btn-danger" onclick="detenerEscaneo()" id="btnDetener" disabled>
+                        ⛔ Detener Escaneo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div class="results-header">
+                <h3>📊 Resultados del Escaneo</h3>
+                <div>
+                    <button class="btn btn-secondary" onclick="refrescarReportes()">🔄 Actualizar</button>
+                    <button class="btn btn-primary" onclick="exportarReportes()">📥 Exportar</button>
+                </div>
             </div>
             
-            <div>
-                <label for="puerto">Puerto(s):</label>
-                <input type="text" id="puerto" value="5000">
-                <small>Ejemplos: 80, 80-90, 22,80,443</small>
-            </div>
-        </div>
-        
-        <div>
-            <label for="tipoEscaneo">Tipo de Escaneo:</label>
-            <select id="tipoEscaneo" onchange="actualizarOpciones()">
-                <option value="basico">Básico (TCP Connect)</option>
-                <option value="stealth">Stealth (SYN)</option>
-                <option value="udp">UDP</option>
-                <option value="completo">Completo (TCP + UDP)</option>
-                <option value="rapido">Rápido (Top 1000 puertos)</option>
-                <option value="intensivo">Intensivo (Detección OS + Servicios)</option>
-                <option value="vuln">Vulnerabilidades</option>
-                <option value="personalizado">Personalizado</option>
-            </select>
-        </div>
-        
-        <div>
-            <label for="scripts">Scripts NSE:</label>
-            <select id="scripts">
-                <option value="http-headers,http-title">HTTP básico</option>
-                <option value="default">Por defecto</option>
-                <option value="vuln">Vulnerabilidades</option>
-                <option value="discovery">Descubrimiento</option>
-                <option value="safe">Seguros</option>
-                <option value="intrusive">Intrusivos</option>
-                <option value="http-*">HTTP completo</option>
-                <option value="ssl-*">SSL/TLS</option>
-                <option value="smb-*">SMB</option>
-                <option value="dns-*">DNS</option>
-                <option value="ftp-*">FTP</option>
-                <option value="ssh-*">SSH</option>
-            </select>
-        </div>
-        
-        <div id="opcionesAvanzadas" style="display: none;">
-            <h4>Opciones Avanzadas</h4>
-            <div>
-                <label for="velocidad">Velocidad:</label>
-                <select id="velocidad">
-                    <option value="T1">T1 - Muy lento (IDS evasion)</option>
-                    <option value="T2">T2 - Lento</option>
-                    <option value="T3">T3 - Normal</option>
-                    <option value="T4" selected>T4 - Rápido</option>
-                    <option value="T5">T5 - Muy rápido</option>
-                </select>
-            </div>
-            
-            <div>
-                <label for="deteccionOS">
-                    <input type="checkbox" id="deteccionOS"> Detección de OS
-                </label>
-            </div>
-            
-            <div>
-                <label for="deteccionVersion">
-                    <input type="checkbox" id="deteccionVersion" checked> Detección de versión
-                </label>
-            </div>
-            
-            <div>
-                <label for="fragmentacion">
-                    <input type="checkbox" id="fragmentacion"> Fragmentación de paquetes
-                </label>
-            </div>
-            
-            <div>
-                <label for="evasionFirewall">
-                    <input type="checkbox" id="evasionFirewall"> Evasión de firewall
-                </label>
-            </div>
-            
-            <div>
-                <label for="argumentosPersonalizados">Argumentos personalizados:</label>
-                <input type="text" id="argumentosPersonalizados" placeholder="Ej: --source-port 53 --data-length 200">
-            </div>
-        </div>
-        
-        <div>
-            <button onclick="mostrarOpcionesAvanzadas()">Opciones Avanzadas</button>
-            <button onclick="iniciarEscaneo()" id="btnEscanear">Iniciar Escaneo</button>
-            <button onclick="detenerEscaneo()" id="btnDetener" disabled>Detener Escaneo</button>
-        </div>
-        
-        <div id="estado" style="display: none;"></div>
-        
-        <div id="reporteActual" style="display: none;"></div>
-        
-        <div>
-            <h3>Reportes</h3>
-            <button onclick="refrescarReportes()">Actualizar</button>
-            <button onclick="exportarReportes()">Exportar Todo</button>
-            <div id="listaReportes">
-                <div>Cargando reportes...</div>
+            <div class="results-content">
+                <div id="estado" class="hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar"></div>
+                    </div>
+                    <p id="estadoTexto">Preparando escaneo...</p>
+                </div>
+
+                <div id="reporteActual" class="hidden">
+                    <h4>📋 Reporte Actual</h4>
+                    <div id="reporteContenido"></div>
+                </div>
+
+                <div id="listaReportes">
+                    <div class="report-item">
+                        <h5>📄 Reporte de ejemplo</h5>
+                        <p><strong>Host:</strong> 127.0.0.1</p>
+                        <p><strong>Fecha:</strong> 2024-01-01 12:00:00</p>
+                        <p><strong>Puertos:</strong> 80, 443, 22</p>
+                        <p><strong>Estado:</strong> Completado</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div id="reportModal" style="display: none;">
-        <div>
-            <span onclick="cerrarModal()">×</span>
+
+    <div id="reportModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close" onclick="cerrarModal()">×</span>
             <div id="modalContent">Cargando...</div>
         </div>
     </div>
-    
-    <script src="app.js"></script>
+
+    <script>
+        // Variables globales
+        let tipoEscaneoActual = 'basico';
+        let escaneoEnCurso = false;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            verificarAPI();
+            configurarEventListeners();
+            refrescarReportes();
+        });
+
+        function configurarEventListeners() {
+            // Configurar tarjetas de tipo de escaneo
+            const tarjetas = document.querySelectorAll('.scan-type-card');
+            tarjetas.forEach(tarjeta => {
+                tarjeta.addEventListener('click', function() {
+                    // Remover clase active de todas las tarjetas
+                    tarjetas.forEach(t => t.classList.remove('active'));
+                    // Agregar clase active a la tarjeta seleccionada
+                    this.classList.add('active');
+                    tipoEscaneoActual = this.dataset.type;
+                    actualizarOpciones();
+                });
+            });
+        }
+
+        function verificarAPI() {
+            // Simular verificación de API
+            setTimeout(() => {
+                document.getElementById('apiStatusText').textContent = 'Conectado ✅';
+            }, 1000);
+        }
+
+        function mostrarOpcionesAvanzadas() {
+            const opciones = document.getElementById('opcionesAvanzadas');
+            opciones.classList.toggle('hidden');
+        }
+
+        function actualizarOpciones() {
+            // Actualizar opciones basadas en el tipo de escaneo seleccionado
+            const scripts = document.getElementById('scripts');
+            const puerto = document.getElementById('puerto');
+            
+            switch(tipoEscaneoActual) {
+                case 'rapido':
+                    puerto.value = '1-1000';
+                    break;
+                case 'completo':
+                    puerto.value = '1-65535';
+                    break;
+                case 'udp':
+                    puerto.value = '53,67,68,69,123,161,162';
+                    break;
+                default:
+                    puerto.value = '80,443,22,21,25,53,110,143,993,995';
+            }
+        }
+
+        function iniciarEscaneo() {
+            if (escaneoEnCurso) return;
+            
+            escaneoEnCurso = true;
+            document.getElementById('btnEscanear').disabled = true;
+            document.getElementById('btnDetener').disabled = false;
+            
+            // Mostrar estado
+            document.getElementById('estado').classList.remove('hidden');
+            document.getElementById('estadoTexto').textContent = 'Iniciando escaneo...';
+            
+            // Simular progreso
+            let progreso = 0;
+            const progressBar = document.getElementById('progressBar');
+            const estadoTexto = document.getElementById('estadoTexto');
+            
+            const interval = setInterval(() => {
+                progreso += Math.random() * 10;
+                if (progreso > 100) progreso = 100;
+                
+                progressBar.style.width = progreso + '%';
+                estadoTexto.textContent = `Escaneando... ${Math.round(progreso)}%`;
+                
+                if (progreso >= 100) {
+                    clearInterval(interval);
+                    finalizarEscaneo();
+                }
+            }, 500);
+        }
+
+        function detenerEscaneo() {
+            escaneoEnCurso = false;
+            document.getElementById('btnEscanear').disabled = false;
+            document.getElementById('btnDetener').disabled = true;
+            document.getElementById('estado').classList.add('hidden');
+        }
+
+        function finalizarEscaneo() {
+            escaneoEnCurso = false;
+            document.getElementById('btnEscanear').disabled = false;
+            document.getElementById('btnDetener').disabled = true;
+            document.getElementById('estado').classList.add('hidden');
+            
+            // Mostrar resultado
+            document.getElementById('reporteActual').classList.remove('hidden');
+            document.getElementById('reporteContenido').innerHTML = `
+                <div class="report-item">
+                    <h5>✅ Escaneo Completado</h5>
+                    <p><strong>Host:</strong> ${document.getElementById('host').value}</p>
+                    <p><strong>Puertos abiertos:</strong> 80, 443, 22</p>
+                    <p><strong>Servicios detectados:</strong> HTTP, HTTPS, SSH</p>
+                    <p><strong>Tiempo total:</strong> 45 segundos</p>
+                </div>
+            `;
+            
+            refrescarReportes();
+        }
+
+        function refrescarReportes() {
+            const listaReportes = document.getElementById('listaReportes');
+            // Aquí se cargarían los reportes reales desde la API
+            console.log('Actualizando lista de reportes...');
+        }
+
+        function exportarReportes() {
+            alert('Exportando reportes...');
+        }
+
+        function cerrarModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+        }
+    </script>
 </body>
 </html>
