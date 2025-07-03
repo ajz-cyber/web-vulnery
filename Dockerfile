@@ -1,20 +1,26 @@
-# Imagen base de Python
+# Usa una imagen base de Python
 FROM python:3.11-slim
 
-# Instala Nmap
-RUN apt-get update && apt-get install -y nmap && apt-get clean
+# Instala Nmap y algunas dependencias del sistema necesarias
+RUN apt-get update && apt-get install -y \
+    nmap \
+    gcc \
+    libffi-dev \
+    libssl-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Directorio de trabajo en el contenedor
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos al contenedor
+# Copia todo el código al contenedor
 COPY . .
 
-# Instala las dependencias
+# Instala dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expone el puerto que usa Flask o Gunicorn
+# Expone el puerto 5000
 EXPOSE 5000
 
-# Comando que ejecuta la app
+# Comando de inicio de la app
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
